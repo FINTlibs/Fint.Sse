@@ -18,9 +18,10 @@ namespace Fint.Sse
         private readonly FintSseSettings _appSettings;
         private readonly IEventHandler _eventHandler;
         private readonly ILogger<FintEventListener> _logger;
+        private object lockObject = new object();
 
         public FintEventListener(
-            IOptions<FintSseSettings> fintSettings, 
+            IOptions<FintSseSettings> fintSettings,
             IEventHandler eventHandler,
             ILogger<FintEventListener> logger)
         {
@@ -33,7 +34,7 @@ namespace Fint.Sse
         {
             var headers = new Dictionary<string, string>
             {
-                { "x-org-id", orgId }
+                {FintHeaders.ORG_ID_HEADER, orgId}
             };
 
             var uuid = Guid.NewGuid().ToString();
@@ -43,7 +44,7 @@ namespace Fint.Sse
             {
                 _organisationIdList.Add(orgId);
             }
-            
+
             /*
              This seems wrong. We should add an event source per thread not reuse the same one...
              */
@@ -77,17 +78,19 @@ namespace Fint.Sse
                 {
                     if (ContainsOrganisationId(serverSentEvent.OrgId))
                     {
-                        _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Data);
+                        _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId,
+                            serverSentEvent.Data);
                         _eventHandler.HandleEvent(serverSentEvent);
                     }
                     else
                     {
-                        _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId );
+                        _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId);
                     }
                 }
                 else
                 {
-                    _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
+                    _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}",
+                        serverSentEvent.CorrId, serverSentEvent.OrgId);
                 }
             }
             else
@@ -98,24 +101,30 @@ namespace Fint.Sse
 
         private bool IsNewCorrId(string corrId)
         {
-            if (_uuids.Contains(corrId))
+            lock (lockObject)
             {
-                return false;
+                if (_uuids.Contains(corrId))
+                {
+                    return false;
+                }
+
+                if (_uuids.Count >= MAX_UUIDS)
+                {
+                    _uuids.First().Remove(0);
+                }
+
+                _uuids.Add(corrId);
+
+                return true;
             }
-
-            if (_uuids.Count >= MAX_UUIDS)
-            {
-                _uuids.First().Remove(0);
-            }
-
-            _uuids.Add(corrId);
-
-            return true;
         }
 
         private bool ContainsOrganisationId(string orgId)
         {
-            return _organisationIdList != null && _organisationIdList.Contains(orgId);
+            lock (lockObject)
+            {
+                return _organisationIdList != null && _organisationIdList.Contains(orgId);
+            }
         }
     }
 }
