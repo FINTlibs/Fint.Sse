@@ -2,6 +2,7 @@
 using System.Diagnostics.Tracing;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Fint.Sse.Sample
 {
@@ -41,6 +42,14 @@ namespace Fint.Sse.Sample
             //var factory = new slf4net.Factories.SimpleLoggerFactory(new TraceLogger("Test"));
             //var resolver = new SimpleFactoryResolver(factory);
             //LoggerFactory.SetFactoryResolver(resolver);
+
+            string logLocation = "";//configuration.GetSection("Configuration:LogLocation").Value;
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.LiterateConsole()
+                .WriteTo.RollingFile(logLocation + "\\adapter-{Date}.txt",
+                    retainedFileCountLimit: 31)
+                .CreateLogger();
         }
     }
 }

@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse
 {
     public class EventSource
     {
-        //TODO: private static readonly slf4net.ILogger _logger = slf4net.LoggerFactory.GetLogger(typeof(EventSource));
+        //TODO: private static readonly ILogger _logger = new LoggerFactory().CreateLogger<EventSource>();
 
         public event EventHandler<StateChangedEventArgs> StateChanged;
         public event EventHandler<ServerSentEventReceivedEventArgs> EventReceived;
@@ -78,7 +79,7 @@ namespace Fint.Sse
             _timeout = timeout;
             Url = url;
             CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers);
-            //TODO: _logger.Info("EventSource created for " + url.ToString());
+            //TODO: _logger.LogInformation("EventSource created for " + url.ToString());
         }
 
 
