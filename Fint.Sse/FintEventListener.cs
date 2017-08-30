@@ -18,7 +18,7 @@ namespace Fint.Sse
         private readonly FintSseSettings _appSettings;
         private readonly IEventHandler _eventHandler;
         private readonly ILogger<FintEventListener> _logger;
-        private object lockObject = new object();
+        private readonly object _lockObject = new object();
 
         public FintEventListener(
             IOptions<FintSseSettings> fintSettings,
@@ -45,9 +45,6 @@ namespace Fint.Sse
                 _organisationIdList.Add(orgId);
             }
 
-            /*
-             This seems wrong. We should add an event source per thread not reuse the same one...
-             */
             _eventSource = new EventSource(url, headers, 10000);
 
             _eventSource.StateChanged += (o, e) =>
@@ -68,40 +65,42 @@ namespace Fint.Sse
             _eventSource.CancellationToken = cancellationTokenSource;
         }
 
+        public void Disconnect()
+        {
+            _logger.LogInformation("Stop listening to {eventSource}", _eventSource.Url);
+            _eventSource.CancellationToken.Cancel();
+            _logger.LogInformation("Stop listening");
+        }
+
         public void OnEventReceived(ServerSentEvent sse)
         {
             var serverSentEvent = EventUtil.ToEvent<object>(sse.Data);
 
-            if (serverSentEvent != null)
-            {
-                if (IsNewCorrId(serverSentEvent.CorrId))
-                {
-                    if (ContainsOrganisationId(serverSentEvent.OrgId))
-                    {
-                        _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId,
-                            serverSentEvent.Data);
-                        _eventHandler.HandleEvent(serverSentEvent);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId);
-                    }
-                }
-                else
-                {
-                    _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}",
-                        serverSentEvent.CorrId, serverSentEvent.OrgId);
-                }
-            }
-            else
+            if (serverSentEvent == null)
             {
                 _logger.LogError("Could not parse Event object {data}", sse.Data);
+                return;
             }
+
+            if (!IsNewCorrId(serverSentEvent.CorrId))
+            {
+                _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
+                return;
+            }
+
+            if (!ContainsOrganisationId(serverSentEvent.OrgId))
+            {
+                _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId);
+                return;
+            }
+
+            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Data);
+            _eventHandler.HandleEvent(serverSentEvent);
         }
 
         private bool IsNewCorrId(string corrId)
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
                 if (_uuids.Contains(corrId))
                 {
@@ -121,7 +120,7 @@ namespace Fint.Sse
 
         private bool ContainsOrganisationId(string orgId)
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
                 return _organisationIdList != null && _organisationIdList.Contains(orgId);
             }

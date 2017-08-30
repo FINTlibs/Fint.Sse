@@ -10,8 +10,6 @@ namespace Fint.Sse
     {
         private readonly IFintEventListener _fintEventListener;
         private readonly FintSseSettings _fintSettings;
-
-        public readonly List<EventSource> EventSources = new List<EventSource>();
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         public FintSseApplication(
@@ -45,6 +43,11 @@ namespace Fint.Sse
 
                 }, _cts.Token);
             }
+        }
+
+        public void Disconnect()
+        {
+            _fintEventListener.Disconnect();
         }
     }
 }
