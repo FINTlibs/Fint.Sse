@@ -28,21 +28,19 @@ namespace Fint.Sse
             {
                 Task.Run(async delegate
                 {
-                    int fintOptionsSseThreadInterval;
-                    if (_fintSettings.SseThreadInterval > 0)
-                    {
-                        fintOptionsSseThreadInterval = _fintSettings.SseThreadInterval;
-                    }
-                    else
-                    {
-                        fintOptionsSseThreadInterval = Convert.ToInt32(TimeSpan.FromMinutes(10).TotalMilliseconds);
-                    }
+                    var fintOptionsSseThreadInterval = ThreadDelay;
 
                     await Task.Delay(fintOptionsSseThreadInterval, _cts.Token)
                         .ContinueWith(_ => _fintEventListener.Listen(orgId), _cts.Token);
-
                 }, _cts.Token);
             }
+        }
+
+        private int ThreadDelay => _fintSettings.SseThreadIntervalInMinutes > 0 ? ConvertMinutesToMilliseconds(_fintSettings.SseThreadIntervalInMinutes) : ConvertMinutesToMilliseconds(10);
+
+        private int ConvertMinutesToMilliseconds(int intervalInMinutes)
+        {
+            return Convert.ToInt32(TimeSpan.FromMinutes(intervalInMinutes).TotalMilliseconds);
         }
 
         public void Disconnect()
