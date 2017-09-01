@@ -50,80 +50,88 @@ namespace Fint.Sse
                         }
                         if (!cancelToken.IsCancellationRequested)
                         {
-                            int bytesRead = taskRead.Result;
-                            if (bytesRead > 0) // stream has not reached the end yet
+                            try
                             {
-                                //Console.WriteLine("ReadCallback {0} bytesRead", bytesRead);
-                                string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                                text = mRemainingText + text;
-                                string[] lines = StringSplitter.SplitIntoLines(text, out mRemainingText);
-                                foreach (string line in lines)
-                                {
-                                    if (cancelToken.IsCancellationRequested) break;
+                                var bytesRead = taskRead.Result;
 
-                                    // Dispatch message if empty lne
-                                    if (string.IsNullOrEmpty(line.Trim()) && mSse != null)
+                                if (bytesRead > 0) // stream has not reached the end yet
+                                {
+                                    //Console.WriteLine("ReadCallback {0} bytesRead", bytesRead);
+                                    string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                                    text = mRemainingText + text;
+                                    string[] lines = StringSplitter.SplitIntoLines(text, out mRemainingText);
+                                    foreach (string line in lines)
                                     {
-                                        //TODO: _logger.Trace("Message received");
-                                        msgReceived(mSse);
-                                        mSse = null;
-                                    }
-                                    else if (line.StartsWith(":"))
-                                    {
-                                        // This a comment, just log it.
-                                        //TODO: _logger.Trace("A comment was received: " + line);
-                                    }
-                                    else
-                                    {
-                                        string fieldName = String.Empty;
-                                        string fieldValue = String.Empty;
-                                        if (line.Contains(':'))
+                                        if (cancelToken.IsCancellationRequested) break;
+
+                                        // Dispatch message if empty lne
+                                        if (string.IsNullOrEmpty(line.Trim()) && mSse != null)
                                         {
-                                            int index = line.IndexOf(':');
-                                            fieldName = line.Substring(0, index);
-                                            fieldValue = line.Substring(index + 1).TrimStart();
+                                            //TODO: _logger.Trace("Message received");
+                                            msgReceived(mSse);
+                                            mSse = null;
+                                        }
+                                        else if (line.StartsWith(":"))
+                                        {
+                                            // This a comment, just log it.
+                                            //TODO: _logger.Trace("A comment was received: " + line);
                                         }
                                         else
-                                            fieldName = line;
+                                        {
+                                            string fieldName = String.Empty;
+                                            string fieldValue = String.Empty;
+                                            if (line.Contains(':'))
+                                            {
+                                                int index = line.IndexOf(':');
+                                                fieldName = line.Substring(0, index);
+                                                fieldValue = line.Substring(index + 1).TrimStart();
+                                            }
+                                            else
+                                                fieldName = line;
 
-                                        if (String.Compare(fieldName, "event", true) == 0)
-                                        {
-                                            mSse = mSse ?? new ServerSentEvent();
-                                            mSse.EventType = fieldValue;
-                                        }
-                                        else if (String.Compare(fieldName, "data", true) == 0)
-                                        {
-                                            mSse = mSse ?? new ServerSentEvent();
-                                            mSse.Data = fieldValue + '\n';
-                                        }
-                                        else if (String.Compare(fieldName, "id", true) == 0)
-                                        {
-                                            mSse = mSse ?? new ServerSentEvent();
-                                            mSse.LastEventId = fieldValue;
-                                        }
-                                        else if (String.Compare(fieldName, "retry", true) == 0)
-                                        {
-                                            int parsedRetry;
-                                            if (int.TryParse(fieldValue, out parsedRetry))
+                                            if (String.Compare(fieldName, "event", true) == 0)
                                             {
                                                 mSse = mSse ?? new ServerSentEvent();
-                                                mSse.Retry = parsedRetry;
+                                                mSse.EventType = fieldValue;
+                                            }
+                                            else if (String.Compare(fieldName, "data", true) == 0)
+                                            {
+                                                mSse = mSse ?? new ServerSentEvent();
+                                                mSse.Data = fieldValue + '\n';
+                                            }
+                                            else if (String.Compare(fieldName, "id", true) == 0)
+                                            {
+                                                mSse = mSse ?? new ServerSentEvent();
+                                                mSse.LastEventId = fieldValue;
+                                            }
+                                            else if (String.Compare(fieldName, "retry", true) == 0)
+                                            {
+                                                int parsedRetry;
+                                                if (int.TryParse(fieldValue, out parsedRetry))
+                                                {
+                                                    mSse = mSse ?? new ServerSentEvent();
+                                                    mSse.Retry = parsedRetry;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Ignore this, just log it
+                                                //TODO: _logger.Warn("A unknown line was received: " + line);
                                             }
                                         }
-                                        else
-                                        {
-                                            // Ignore this, just log it
-                                            //TODO: _logger.Warn("A unknown line was received: " + line);
-                                        }
                                     }
-                                }
 
-                                if (!cancelToken.IsCancellationRequested)
-                                    return this;
+                                    if (!cancelToken.IsCancellationRequested)
+                                        return this;
+                                }
+                                else // end of the stream reached
+                                {
+                                    //TODO: _logger.Trace("No bytes read. End of stream.");
+                                }
                             }
-                            else // end of the stream reached
+                            catch (Exception ex)
                             {
-                                //TODO: _logger.Trace("No bytes read. End of stream.");
+                                //TODO: _logger.Trace(ex, "ConnectedState.Run");
                             }
                         }
 
