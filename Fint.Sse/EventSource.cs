@@ -26,7 +26,7 @@ namespace Fint.Sse
         private Dictionary<string, string> _headers;
         private Uri url;
         private IWebRequesterFactory factory;
-        private Dictionary<string, string> headers;
+        private Dictionary<string, string> headers;        
 
         private IConnectionState CurrentState
         {
@@ -48,13 +48,13 @@ namespace Fint.Sse
 
         public EventSource(Uri url, int timeout)
         {
-            Initialize(url, timeout);
+            Initialize(url, timeout, null);
         }
 
-        public EventSource(Uri url, Dictionary<string, string> headers, int timeout)
+        public EventSource(Uri url, Dictionary<string, string> headers, int timeout, ITokenService tokenService)
         {
-            _headers = headers;
-            Initialize(url, timeout);
+            _headers = headers;            
+            Initialize(url, timeout, tokenService);
         }
 
         /// <summary>
@@ -64,21 +64,21 @@ namespace Fint.Sse
         protected EventSource(Uri url, IWebRequesterFactory factory)
         {
             _webRequesterFactory = factory;
-            Initialize(url, 0);
+            Initialize(url, 0, null);
         }
 
         protected EventSource(Uri url, IWebRequesterFactory factory, Dictionary<string, string> headers)
         {
             _webRequesterFactory = factory;
             _headers = headers;
-            Initialize(url, 0);
+            Initialize(url, 0, null);
         }
 
-        private void Initialize(Uri url, int timeout)
+        private void Initialize(Uri url, int timeout, ITokenService tokenService)
         {
             _timeout = timeout;
             Url = url;
-            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers);
+            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers, tokenService);
             //TODO: _logger.LogInformation("EventSource created for " + url.ToString());
         }
 

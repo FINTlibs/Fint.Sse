@@ -6,6 +6,6 @@ namespace Fint.Sse
 {
     public interface IWebRequester
     {
-        Task<IServerResponse> Get(Uri url, Dictionary<string, string> headers = null);
+        Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers = null);
     }
 }

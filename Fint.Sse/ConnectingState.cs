@@ -13,22 +13,24 @@ namespace Fint.Sse
         private Uri mUrl;
         private IWebRequesterFactory mWebRequesterFactory;
         private Dictionary<string, string> mHeaders;
+        private ITokenService mTokenService;
 
         public EventSourceState State { get { return EventSourceState.CONNECTING; } }
         
-        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers)
+        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService)
         {
             if (url == null) throw new ArgumentNullException("Url cant be null");
             if (webRequesterFactory == null) throw new ArgumentNullException("Factory cant be null");
             mUrl = url;
             mWebRequesterFactory = webRequesterFactory;
             mHeaders = headers;
+            mTokenService = tokenService;
         }
 
         public Task<IConnectionState> Run(Action<ServerSentEvent> donothing, CancellationToken cancelToken)
         {
             IWebRequester requester = mWebRequesterFactory.Create();
-            var taskResp = requester.Get(mUrl, mHeaders);
+            var taskResp = requester.Get(mUrl, mTokenService, mHeaders);
 
             return taskResp.ContinueWith<IConnectionState>(tsk => 
             {
@@ -37,7 +39,7 @@ namespace Fint.Sse
                     IServerResponse response = tsk.Result;
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        return new ConnectedState(response, mWebRequesterFactory, mHeaders);
+                        return new ConnectedState(response, mWebRequesterFactory, mHeaders, mTokenService);
                     }
                     else
                     {
@@ -45,7 +47,7 @@ namespace Fint.Sse
                     }
                 }
 
-                return new DisconnectedState(mUrl, mWebRequesterFactory, mHeaders);
+                return new DisconnectedState(mUrl, mWebRequesterFactory, mHeaders, mTokenService);
             });
         }
     }

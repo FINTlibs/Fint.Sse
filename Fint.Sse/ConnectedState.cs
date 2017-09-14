@@ -16,14 +16,16 @@ namespace Fint.Sse
         private string mRemainingText = string.Empty;   // the text that is not ended with a lineending char is saved for next call.
         private IServerResponse mResponse;
         private Dictionary<string, string> mHeaders;
+        private ITokenService mTokenService;
 
         public EventSourceState State { get { return EventSourceState.OPEN; } }
 
-        public ConnectedState(IServerResponse response, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers)
+        public ConnectedState(IServerResponse response, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService)
         {
             mResponse = response;
             mWebRequesterFactory = webRequesterFactory;
             mHeaders = headers;
+            mTokenService = tokenService;
         }
 
         public Task<IConnectionState> Run(Action<ServerSentEvent> msgReceived, CancellationToken cancelToken)
@@ -139,7 +141,7 @@ namespace Fint.Sse
                         //stream.Close();
                         //mResponse.Close();
                         //mResponse.Dispose();
-                        return new DisconnectedState(mResponse.ResponseUri, mWebRequesterFactory, mHeaders);
+                        return new DisconnectedState(mResponse.ResponseUri, mWebRequesterFactory, mHeaders, mTokenService);
                     }
                 }
             });

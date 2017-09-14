@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Fint.Event.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,21 +16,23 @@ namespace Fint.Sse
         private readonly ConcurrentBag<string> _organisationIdList = new ConcurrentBag<string>();
         private readonly ConcurrentBag<string> _uuids = new ConcurrentBag<string>();
         private EventSource _eventSource;
-        private readonly FintSseSettings _appSettings;
+        private readonly FintSseSettings _appSettings;        
         private readonly IEventHandler _eventHandler;
         private readonly ILogger<FintEventListener> _logger;
+        private ITokenService _tokenService;
         private readonly object _lockObject = new object();
 
         public FintEventListener(
-            IOptions<FintSseSettings> fintSettings,
+            IOptions<FintSseSettings> fintSettings,            
             IEventHandler eventHandler,
-            ILogger<FintEventListener> logger)
+            ILogger<FintEventListener> logger, ITokenService tokenService)
         {
-            _appSettings = fintSettings.Value;
+            _appSettings = fintSettings.Value;            
             _eventHandler = eventHandler;
             _logger = logger;
+            _tokenService = tokenService;            
         }
-
+ 
         public void Listen(string orgId)
         {
             var headers = new Dictionary<string, string>
@@ -43,9 +46,9 @@ namespace Fint.Sse
             if (!ContainsOrganisationId(orgId))
             {
                 _organisationIdList.Add(orgId);
-            }
+            }                       
 
-            _eventSource = new EventSource(url, headers, 10000);
+            _eventSource = new EventSource(url, headers, 10000, _tokenService);
 
             _eventSource.StateChanged += (o, e) =>
             {
@@ -95,6 +98,7 @@ namespace Fint.Sse
             }
 
             _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Data);
+            // var accessToken = _tokenClient.AccessToken;
             _eventHandler.HandleEvent(serverSentEvent);
         }
 
@@ -124,6 +128,6 @@ namespace Fint.Sse
             {
                 return _organisationIdList != null && _organisationIdList.Contains(orgId);
             }
-        }
+        }        
     }
 }

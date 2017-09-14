@@ -7,12 +7,28 @@ namespace Fint.Sse
 {
     class WebRequester : IWebRequester
     {
-        public Task<IServerResponse> Get(Uri url, Dictionary<string, string> headers = null)
+        public Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers = null)
         {
+            var accessToken = "";
+
+            if (tokenService.UseAuthentication)
+            {                
+                var task = Task.Run(async () => {
+                    return await tokenService.GetAccessTokenAsync();
+                });
+
+                accessToken = task.Result;                
+            }
+                     
             var wreq = (HttpWebRequest)WebRequest.Create(url);
             wreq.Method = "GET";
-            wreq.Proxy = null;
+            wreq.Proxy = null; 
 
+            if (tokenService.UseAuthentication)
+            {
+                wreq.Headers[HttpRequestHeader.Authorization] = "Bearer " + accessToken;
+            }
+            
             if (headers != null)
             {
                 foreach (var header in headers)
