@@ -36,7 +36,7 @@ namespace Fint.Sse.Tests
             this.Response = response;
         }
 
-        public System.Threading.Tasks.Task<IServerResponse> Get(Uri url, Dictionary<string, string> headers)
+        public System.Threading.Tasks.Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers)
         {
             return Task.Factory.StartNew<IServerResponse>(() =>
             {

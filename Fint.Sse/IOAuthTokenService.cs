@@ -8,6 +8,6 @@ namespace Fint.Sse
     public interface IOAuthTokenService
     {
         Task<string> GetAccessTokenAsync();
-        bool UseAuthentication { get; }
+        bool OAuthEnabled { get; }
     }
 }

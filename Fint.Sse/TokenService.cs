@@ -8,7 +8,7 @@ namespace Fint.Sse
     public class TokenService : ITokenService
     {
         private IOAuthTokenService mTokenClient;
-        public bool UseAuthentication { get { return mTokenClient.UseAuthentication; } }        
+        public bool OAuthEnabled { get { return mTokenClient.OAuthEnabled; } }        
 
         public TokenService(IOAuthTokenService tokenClient)
         {

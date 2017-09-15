@@ -21,40 +21,40 @@ namespace Fint.Sse
         private string mAccessToken { get; set; }
         private string mRefreshToken { get; set; }
         private long mExpiresIn { get; set; }
-        private string mTokenEndpoint { get; set; }
+        private string mAccessTokenUri { get; set; }
         private string mClientId { get; set; }
-        private string mSecret { get; set; }
+        private string mClientSecret { get; set; }
         private string mUsername { get; set; }
         private string mPassword { get; set; }
         private string mScope { get; set; }
         private DateTime mExpiresAt { get; set; }
-        public bool UseAuthentication { get; }
+        public bool OAuthEnabled { get; }
         
 
         public OAuthTokenService(IOptions<OAuthTokenServiceOptions> options, HttpClient httpClient)
         {
-            UseAuthentication = options.Value.UseAuthentication;
+            OAuthEnabled = options.Value.OAuthEnabled;
 
-            if (UseAuthentication)
+            if (OAuthEnabled)
             {
-                if (options.Value.TokenEndpoint == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Token Endpoint can't be empty or null");
-                if (options.Value.ClientId == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Client Id can't be empty or null");
-                if (options.Value.Secret == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Client secret can't be empty or null");
-                if (options.Value.Username == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Username can't be empty or null");
-                if (options.Value.Password == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Password can't be empty or null");
-                if (options.Value.Scope == String.Empty || options.Value.TokenEndpoint == null) throw new ArgumentNullException("Scope can't be empty or null");
+                if (options.Value.AccessTokenUri == String.Empty || options.Value.AccessTokenUri == null) throw new ArgumentNullException("Token Endpoint can't be empty or null");
+                if (options.Value.ClientId == String.Empty || options.Value.ClientId == null) throw new ArgumentNullException("Client Id can't be empty or null");
+                if (options.Value.ClientSecret == String.Empty || options.Value.ClientSecret == null) throw new ArgumentNullException("Client ClientSecret can't be empty or null");
+                if (options.Value.Username == String.Empty || options.Value.Username == null) throw new ArgumentNullException("Username can't be empty or null");
+                if (options.Value.Password == String.Empty || options.Value.Password == null) throw new ArgumentNullException("Password can't be empty or null");
+                if (options.Value.Scope == String.Empty || options.Value.Scope == null) throw new ArgumentNullException("Scope can't be empty or null");
                 
-                mTokenEndpoint = options.Value.TokenEndpoint;
+                mAccessTokenUri = options.Value.AccessTokenUri;
                 mClientId = options.Value.ClientId;
-                mSecret = options.Value.Secret;
+                mClientSecret = options.Value.ClientSecret;
                 mUsername = options.Value.Username;
                 mPassword = options.Value.Password;
                 mScope = options.Value.Scope;
 
                 mTokenClient = new TokenClient(
-                    mTokenEndpoint,
+                    mAccessTokenUri,
                     mClientId,
-                    mSecret);
+                    mClientSecret);
 
                 mHttpClient = httpClient;
             }
@@ -74,6 +74,7 @@ namespace Fint.Sse
             {
                 if (mExpiresAt < DateTime.UtcNow)
                 {
+                    // TODO: Add extra time 5 minutes to ensure the token has not expired before we can use it
                     var response = await RefreshTokenAsync(mRefreshToken);
                     mAccessToken = response.AccessToken;                    
                     mExpiresIn = response.ExpiresIn;
@@ -91,7 +92,7 @@ namespace Fint.Sse
 
         private async Task<RefreshToken> RefreshTokenAsync(string refreshToken)
         {            
-            var authorizationHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(mClientId + ":" + mSecret));            
+            var authorizationHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(mClientId + ":" + mClientSecret));            
             mHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationHeader);
 
             var form = new Dictionary<string, string>
@@ -100,7 +101,7 @@ namespace Fint.Sse
                 {"refresh_token", refreshToken}
             };            
 
-            var url = mTokenEndpoint + "?client_id=" + mClientId + "&client_secret=" + mSecret + "&scope=" + mScope;            
+            var url = mAccessTokenUri + "?client_id=" + mClientId + "&client_secret=" + mClientSecret + "&scope=" + mScope;            
             var response = await mHttpClient.PostAsync(url, new FormUrlEncodedContent(form));
             var jsonSerializer = new DataContractJsonSerializer(typeof(RefreshToken));
             var responseStream = await response.Content.ReadAsStreamAsync();

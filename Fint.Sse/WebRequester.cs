@@ -11,7 +11,7 @@ namespace Fint.Sse
         {
             var accessToken = "";
 
-            if (tokenService.UseAuthentication)
+            if (tokenService.OAuthEnabled)
             {                
                 var task = Task.Run(async () => {
                     return await tokenService.GetAccessTokenAsync();
@@ -24,7 +24,7 @@ namespace Fint.Sse
             wreq.Method = "GET";
             wreq.Proxy = null; 
 
-            if (tokenService.UseAuthentication)
+            if (tokenService.OAuthEnabled)
             {
                 wreq.Headers[HttpRequestHeader.Authorization] = "Bearer " + accessToken;
             }
