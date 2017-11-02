@@ -41,6 +41,7 @@ namespace Fint.Sse
             };
 
             var uuid = Guid.NewGuid().ToString();
+            _logger.LogInformation("SSE client id: {uuid}", uuid);
             var url = new Uri(string.Format("{0}/{1}", _appSettings.SseEndpoint, uuid));
 
             if (!ContainsOrganisationId(orgId))
@@ -51,8 +52,7 @@ namespace Fint.Sse
             _eventSource = new EventSource(url, headers, 10000, _tokenService);
 
             _eventSource.StateChanged += (o, e) =>
-            {
-                _logger.LogInformation("SSE client id: {uuid}", uuid);
+            {                
                 _logger.LogDebug("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
             };
 
