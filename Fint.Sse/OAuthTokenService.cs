@@ -73,7 +73,7 @@ namespace Fint.Sse
             else
             {
                 // Add extra time 5 minutes to ensure the token has not expired before we can use it
-                var currentTime = DateTime.UtcNow.AddMinutes(5);
+                var currentTime = DateTime.UtcNow.AddMinutes(5).ToLocalTime();
                 if (mExpiresAt < currentTime)
                 {                    
                     var response = await RefreshTokenAsync(mRefreshToken);

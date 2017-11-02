@@ -52,7 +52,7 @@ namespace Fint.Sse
 
             _eventSource.StateChanged += (o, e) =>
             {
-                _logger.LogInformation("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
+                _logger.LogDebug("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
             };
 
             _eventSource.EventReceived += (o, e) =>
