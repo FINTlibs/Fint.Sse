@@ -52,6 +52,7 @@ namespace Fint.Sse
 
             _eventSource.StateChanged += (o, e) =>
             {
+                _logger.LogInformation("SSE client id: {uuid}", uuid);
                 _logger.LogDebug("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
             };
 
