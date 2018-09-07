@@ -61,28 +61,31 @@ namespace Fint.Sse
         }        
 
         public async Task<string> GetAccessTokenAsync()
-        {            
-            if (mAccessToken == null)
-            {
-                var response = await RequestAccessTokenAsync();
-                mAccessToken = response.AccessToken;
-                mRefreshToken = response.RefreshToken;
-                mExpiresIn = response.ExpiresIn;
-                mExpiresAt = DateTime.UtcNow.AddSeconds(mExpiresIn).ToLocalTime();
-            }
-            else
-            {
-                // Add extra time 5 minutes to ensure the token has not expired before we can use it
-                var currentTime = DateTime.UtcNow.AddMinutes(5).ToLocalTime();
-                if (mExpiresAt < currentTime)
-                {                    
+        {
+            // Add extra time 5 minutes to ensure the token has not expired before we can use it
+            var currentTime = DateTime.UtcNow.AddMinutes(5).ToLocalTime();
+            var expired = mExpiresAt < currentTime;
+            if (mAccessToken == null || expired)
+            { 
+               if (mRefreshToken == null)
+                {
+                    //Console.WriteLine("Getting Access Token from " + mAccessTokenUri);
+                    var response = await RequestAccessTokenAsync();
+                    if (response.IsError) throw new Exception("OAuth Access Token error: " + response.Error + ", " + response.ErrorDescription);
+                    mAccessToken = response.AccessToken;
+                    mRefreshToken = response.RefreshToken;
+                    mExpiresIn = response.ExpiresIn;
+                    mExpiresAt = DateTime.UtcNow.AddSeconds(mExpiresIn).ToLocalTime();
+                }
+                else
+                {
+                    //Console.WriteLine("Getting Refresh Token from " + mAccessTokenUri);
                     var response = await RefreshTokenAsync(mRefreshToken);
                     mAccessToken = response.AccessToken;                    
                     mExpiresIn = response.ExpiresIn;
                     mExpiresAt = DateTime.UtcNow.AddSeconds(mExpiresIn).ToLocalTime();
                 }
             }
-                        
             return mAccessToken;            
         }         
         
@@ -93,6 +96,7 @@ namespace Fint.Sse
 
         private async Task<RefreshToken> RefreshTokenAsync(string refreshToken)
         {            
+            // TODO: use mTokenClient.RequestRefreshTokenAsync()
             var authorizationHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(mClientId + ":" + mClientSecret));            
             mHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationHeader);
 
@@ -104,6 +108,7 @@ namespace Fint.Sse
 
             var url = mAccessTokenUri + "?client_id=" + mClientId + "&client_secret=" + mClientSecret + "&scope=" + mScope;            
             var response = await mHttpClient.PostAsync(url, new FormUrlEncodedContent(form));
+            if (!response.IsSuccessStatusCode) throw new Exception("OAuth Refresh Token error: " + response.ReasonPhrase);
             var jsonSerializer = new DataContractJsonSerializer(typeof(RefreshToken));
             var responseStream = await response.Content.ReadAsStreamAsync();
             var token = (RefreshToken)jsonSerializer.ReadObject(responseStream);            
