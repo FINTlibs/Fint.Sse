@@ -10,7 +10,7 @@ namespace Fint.Sse.Tests
             mre.WaitOne();
 #else
             if (!mre.WaitOne(1000))
-                throw new TimeoutException("Timeout waiting for manualresetevent");
+                throw new System.TimeoutException("Timeout waiting for manualresetevent");
 #endif
         }
     }

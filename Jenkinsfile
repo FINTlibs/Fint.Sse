@@ -9,7 +9,7 @@ pipeline {
     stage('Build') {
       steps {
         sh 'git clean -fdx'
-        sh 'dotnet msbuild /t:restore /p:RestoreSources=https://api.bintray.com/nuget/fint/nuget Fint.Sse.sln'
+        sh 'dotnet msbuild /t:restore /p:RestoreSources="https://api.nuget.org/v3/index.json;https://api.bintray.com/nuget/fint/nuget" Fint.Sse.sln'
         sh 'dotnet msbuild /t:build /p:Configuration=Release Fint.Sse.sln'
         sh 'dotnet msbuild /t:pack /p:Configuration=Release Fint.Sse.sln'
         sh 'dotnet test Fint.Sse.Tests'
