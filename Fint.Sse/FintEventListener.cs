@@ -58,7 +58,7 @@ namespace Fint.Sse
 
             _eventSource.EventReceived += (o, e) =>
             {
-                if (e?.Message != null)
+                if (e?.Message?.Data != null)
                 {
                     OnEventReceived(e.Message);
                 }

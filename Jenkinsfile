@@ -27,7 +27,7 @@ pipeline {
         deleteDir()
         unstash 'libs'
         archiveArtifacts '**/*.nupkg'
-        sh "dotnet nuget push Fint.Sse/bin/Release/Fint.Sse.*.nupkg -k ${BINTRAY} -s https://api.bintray.com/nuget/fint/nuget"
+        //sh "dotnet nuget push Fint.Sse/bin/Release/Fint.Sse.*.nupkg -k ${BINTRAY} -s https://api.bintray.com/nuget/fint/nuget"
       }
     }
   }
