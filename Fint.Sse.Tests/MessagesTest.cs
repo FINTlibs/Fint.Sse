@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse.Tests
 {
@@ -16,6 +17,7 @@ namespace Fint.Sse.Tests
         ManualResetEvent stateIsOpen;
         List<ServerSentEvent> receivedMessages;
         ManualResetEvent eventReceived;
+        ILogger logger;
 
         private TestableEventSource SetupAndConnect()
         {
@@ -27,8 +29,9 @@ namespace Fint.Sse.Tests
             stateIsOpen = new ManualResetEvent(false);
             receivedMessages = new List<ServerSentEvent>();
             eventReceived = new ManualResetEvent(false);
+            logger = new LoggerFactory().CreateLogger("test");
 
-            TestableEventSource es = new TestableEventSource(url, factory);
+            TestableEventSource es = new TestableEventSource(url, factory, logger);
             es.StateChanged += (o, e) =>
             {
                 states.Add(e.State);

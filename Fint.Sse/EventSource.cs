@@ -59,16 +59,18 @@ namespace Fint.Sse
         /// Constructor for testing purposes
         /// </summary>
         /// <param name="factory">The factory that generates the WebRequester to use.</param>
-        protected EventSource(Uri url, IWebRequesterFactory factory)
+        protected EventSource(Uri url, IWebRequesterFactory factory, ILogger logger)
         {
             _webRequesterFactory = factory;
+            _logger = logger;
             Initialize(url, 0, null);
         }
 
-        protected EventSource(Uri url, IWebRequesterFactory factory, Dictionary<string, string> headers)
+        protected EventSource(Uri url, IWebRequesterFactory factory, Dictionary<string, string> headers, ILogger logger)
         {
             _webRequesterFactory = factory;
             _headers = headers;
+            _logger = logger;
             Initialize(url, 0, null);
         }
 
