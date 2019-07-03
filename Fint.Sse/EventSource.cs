@@ -121,18 +121,12 @@ namespace Fint.Sse
 
         protected void OnEventReceived(ServerSentEvent sse)
         {
-            if (EventReceived != null)
-            {
-                EventReceived(this, new ServerSentEventReceivedEventArgs(sse));
-            }
+            EventReceived?.Invoke(this, new ServerSentEventReceivedEventArgs(sse));
         }
 
         protected void OnStateChanged(EventSourceState newState)
         {
-            if (StateChanged != null)
-            {
-                StateChanged(this, new StateChangedEventArgs(newState));
-            }
+            StateChanged?.Invoke(this, new StateChangedEventArgs(newState));
         }
     }
 }
