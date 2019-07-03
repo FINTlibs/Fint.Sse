@@ -104,8 +104,18 @@ namespace Fint.Sse
 
             mCurrentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
             {
-                CurrentState = cs.Result;
-                Run();
+                try
+                {
+                    CurrentState = cs.Result;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Exception in EventSource loop {@CurrentState}", CurrentState);
+                }
+                finally
+                {
+                    Run();
+                }
             });
         }
 
