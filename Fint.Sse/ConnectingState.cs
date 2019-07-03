@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse
 {
     class ConnectingState : IConnectionState
     {
-        //TODO: private static readonly slf4net.ILogger _logger = slf4net.LoggerFactory.GetLogger(typeof(ConnectingState));
-
         private Uri mUrl;
         private IWebRequesterFactory mWebRequesterFactory;
         private Dictionary<string, string> mHeaders;
         private ITokenService mTokenService;
+        private ILogger mLogger;
 
         public EventSourceState State { get { return EventSourceState.CONNECTING; } }
         
-        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService)
+        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService, ILogger logger)
         {
             if (url == null) throw new ArgumentNullException("Url cant be null");
             if (webRequesterFactory == null) throw new ArgumentNullException("Factory cant be null");
@@ -25,6 +25,7 @@ namespace Fint.Sse
             mWebRequesterFactory = webRequesterFactory;
             mHeaders = headers;
             mTokenService = tokenService;
+            mLogger = logger;
         }
 
         public Task<IConnectionState> Run(Action<ServerSentEvent> donothing, CancellationToken cancelToken)
@@ -39,15 +40,19 @@ namespace Fint.Sse
                     IServerResponse response = tsk.Result;
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        return new ConnectedState(response, mWebRequesterFactory, mHeaders, mTokenService);
+                        return new ConnectedState(response, mWebRequesterFactory, mHeaders, mTokenService, mLogger);
                     }
                     else
                     {
-                        //TODO: _logger.Info("Failed to connect to: " + mUrl.ToString() + response ?? (" Http statuscode: " + response.StatusCode));
+                        mLogger.LogInformation("Failed to connect to: " + mUrl.ToString() + response ?? (" Http statuscode: " + response.StatusCode));
                     }
                 }
+                else
+                {
+                    mLogger.LogDebug(tsk.Exception, "Task Status {@Status}", tsk.Status);
+                }
 
-                return new DisconnectedState(mUrl, mWebRequesterFactory, mHeaders, mTokenService);
+                return new DisconnectedState(mUrl, mWebRequesterFactory, mHeaders, mTokenService, mLogger);
             });
         }
     }

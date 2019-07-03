@@ -49,7 +49,7 @@ namespace Fint.Sse
                 _organisationIdList.Add(orgId);
             }                       
 
-            _eventSource = new EventSource(url, headers, 10000, _tokenService);
+            _eventSource = new EventSource(url, headers, 10000, _tokenService, _logger);
 
             _eventSource.StateChanged += (o, e) =>
             {                
@@ -98,7 +98,7 @@ namespace Fint.Sse
                 return;
             }
 
-            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Data);
+            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Action);
             // var accessToken = _tokenClient.AccessToken;
             _eventHandler.HandleEvent(serverSentEvent);
         }

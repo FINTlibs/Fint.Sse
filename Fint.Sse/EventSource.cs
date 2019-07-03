@@ -26,7 +26,8 @@ namespace Fint.Sse
         private Dictionary<string, string> _headers;
         private Uri url;
         private IWebRequesterFactory factory;
-        private Dictionary<string, string> headers;        
+        private Dictionary<string, string> headers;
+        public ILogger _logger;
 
         private IConnectionState CurrentState
         {
@@ -35,11 +36,7 @@ namespace Fint.Sse
             {
                 if (!value.Equals(mCurrentState))
                 {
-                    StringBuilder sb = new StringBuilder("State changed from ");
-                    sb.Append(mCurrentState == null ? "Unknown" : mCurrentState.State.ToString());
-                    sb.Append(" to ");
-                    sb.Append(value == null ? "Unknown" : value.State.ToString());
-                    //TODO: _logger.Trace(sb.ToString());
+                    _logger.LogDebug("State changed from {mCurrentState} to {value}", mCurrentState, value);
                     mCurrentState = value;
                     OnStateChanged(mCurrentState.State);
                 }
@@ -51,9 +48,10 @@ namespace Fint.Sse
             Initialize(url, timeout, null);
         }
 
-        public EventSource(Uri url, Dictionary<string, string> headers, int timeout, ITokenService tokenService)
+        public EventSource(Uri url, Dictionary<string, string> headers, int timeout, ITokenService tokenService, ILogger logger)
         {
-            _headers = headers;            
+            _headers = headers;
+            _logger = logger;
             Initialize(url, timeout, tokenService);
         }
 
@@ -78,8 +76,8 @@ namespace Fint.Sse
         {
             _timeout = timeout;
             Url = url;
-            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers, tokenService);
-            //TODO: _logger.LogInformation("EventSource created for " + url.ToString());
+            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers, tokenService, _logger);
+            _logger.LogInformation("EventSource created for {url} \\o/", url);
         }
 
 
