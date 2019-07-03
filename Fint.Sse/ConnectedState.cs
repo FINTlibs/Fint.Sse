@@ -132,7 +132,7 @@ namespace Fint.Sse
                             }
                             catch (Exception ex)
                             {
-                                mLogger.LogWarning(ex, "ConnectedState.Run");
+                                mLogger.LogInformation(ex, "ConnectedState.Run");
                             }
                         }
 
