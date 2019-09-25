@@ -101,25 +101,29 @@ namespace Fint.Sse
 
             _currentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
             {
-                CurrentState = cs.Result;
-                Run();
+                try
+                {
+                    CurrentState = cs.Result;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Exception in EventSource loop {@CurrentState}", CurrentState);
+                }
+                finally
+                {
+                    Run();
+                }
             });
         }
 
         protected void OnEventReceived(ServerSentEvent sse)
         {
-            if (EventReceived != null)
-            {
-                EventReceived(this, new ServerSentEventReceivedEventArgs(sse));
-            }
+            EventReceived?.Invoke(this, new ServerSentEventReceivedEventArgs(sse));
         }
 
         protected void OnStateChanged(EventSourceState newState)
         {
-            if (StateChanged != null)
-            {
-                StateChanged(this, new StateChangedEventArgs(newState));
-            }
+            StateChanged?.Invoke(this, new StateChangedEventArgs(newState));
         }
     }
 }

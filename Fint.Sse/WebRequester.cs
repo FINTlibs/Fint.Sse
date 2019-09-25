@@ -7,7 +7,7 @@ namespace Fint.Sse
 {
     class WebRequester : IWebRequester
     {
-        public Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers = null)
+        public async Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers = null)
         {
             var accessToken = "";
 
@@ -17,7 +17,7 @@ namespace Fint.Sse
 
                 accessToken = task.Result;                
             }
-                     
+            
             var webRequest = (HttpWebRequest)WebRequest.Create(url);
             webRequest.Method = "GET";
             webRequest.Proxy = null; 
@@ -35,10 +35,10 @@ namespace Fint.Sse
                 }
             }
 
-            var taskResp = Task.Factory.FromAsync<WebResponse>(webRequest.BeginGetResponse,
+            var taskResponse = Task.Factory.FromAsync<WebResponse>(webRequest.BeginGetResponse,
                                                             webRequest.EndGetResponse,
                                                             null).ContinueWith<IServerResponse>(t => new ServerResponse(t.Result));
-            return taskResp;
+            return await taskResponse;
 
         }
     }
