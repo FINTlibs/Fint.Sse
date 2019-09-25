@@ -15,19 +15,19 @@ namespace Fint.Sse
 
     public class OAuthTokenService : IOAuthTokenService
     {
-        private TokenClient mTokenClient;
-        private HttpClient mHttpClient;
+        private TokenClient _tokenClient;
+        private HttpClient _httpClient;
 
-        private string mAccessToken { get; set; }
-        private string mRefreshToken { get; set; }
-        private long mExpiresIn { get; set; }
-        private string mAccessTokenUri { get; set; }
-        private string mClientId { get; set; }
-        private string mClientSecret { get; set; }
-        private string mUsername { get; set; }
-        private string mPassword { get; set; }
-        private string mScope { get; set; }
-        private DateTime mExpiresAt { get; set; }
+        private string _accessToken { get; set; }
+        private string _refreshToken { get; set; }
+        private long _expiresIn { get; set; }
+        private string _accessTokenUri { get; set; }
+        private string _clientId { get; set; }
+        private string _clientSecret { get; set; }
+        private string _username { get; set; }
+        private string _password { get; set; }
+        private string _scope { get; set; }
+        private DateTime _expiresAt { get; set; }
         public bool OAuthEnabled { get; }
         
 
@@ -37,26 +37,26 @@ namespace Fint.Sse
 
             if (OAuthEnabled)
             {
-                if (options.Value.AccessTokenUri == String.Empty || options.Value.AccessTokenUri == null) throw new ArgumentNullException("Token Endpoint can't be empty or null");
-                if (options.Value.ClientId == String.Empty || options.Value.ClientId == null) throw new ArgumentNullException("Client Id can't be empty or null");
-                if (options.Value.ClientSecret == String.Empty || options.Value.ClientSecret == null) throw new ArgumentNullException("Client ClientSecret can't be empty or null");
-                if (options.Value.Username == String.Empty || options.Value.Username == null) throw new ArgumentNullException("Username can't be empty or null");
-                if (options.Value.Password == String.Empty || options.Value.Password == null) throw new ArgumentNullException("Password can't be empty or null");
-                if (options.Value.Scope == String.Empty || options.Value.Scope == null) throw new ArgumentNullException("Scope can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.AccessTokenUri)) throw new ArgumentNullException("Token Endpoint can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.ClientId)) throw new ArgumentNullException("Client Id can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.ClientSecret)) throw new ArgumentNullException("Client ClientSecret can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.Username)) throw new ArgumentNullException("Username can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.Password)) throw new ArgumentNullException("Password can't be empty or null");
+                if (string.IsNullOrEmpty(options.Value.Scope)) throw new ArgumentNullException("Scope can't be empty or null");
                 
-                mAccessTokenUri = options.Value.AccessTokenUri;
-                mClientId = options.Value.ClientId;
-                mClientSecret = options.Value.ClientSecret;
-                mUsername = options.Value.Username;
-                mPassword = options.Value.Password;
-                mScope = options.Value.Scope;
+                _accessTokenUri = options.Value.AccessTokenUri;
+                _clientId = options.Value.ClientId;
+                _clientSecret = options.Value.ClientSecret;
+                _username = options.Value.Username;
+                _password = options.Value.Password;
+                _scope = options.Value.Scope;
 
-                mTokenClient = new TokenClient(
-                    mAccessTokenUri,
-                    mClientId,
-                    mClientSecret);
+                _tokenClient = new TokenClient(
+                    _accessTokenUri,
+                    _clientId,
+                    _clientSecret);
 
-                mHttpClient = httpClient;
+                _httpClient = httpClient;
             }
         }        
 
@@ -64,41 +64,41 @@ namespace Fint.Sse
         {
             // Add extra time 5 minutes to ensure the token has not expired before we can use it
             var currentTime = DateTime.UtcNow.AddMinutes(5).ToLocalTime();
-            var expired = mExpiresAt < currentTime;
-            if (mAccessToken == null || expired)
+            var expired = _expiresAt < currentTime;
+            if (_accessToken == null || expired)
             { 
-               if (mRefreshToken == null)
+               if (_refreshToken == null)
                 {
                     //Console.WriteLine("Getting Access Token from " + mAccessTokenUri);
                     var response = await RequestAccessTokenAsync();
                     if (response.IsError) throw new Exception("OAuth Access Token error: " + response.Error + ", " + response.ErrorDescription);
-                    mAccessToken = response.AccessToken;
-                    mRefreshToken = response.RefreshToken;
-                    mExpiresIn = response.ExpiresIn;
-                    mExpiresAt = DateTime.UtcNow.AddSeconds(mExpiresIn).ToLocalTime();
+                    _accessToken = response.AccessToken;
+                    _refreshToken = response.RefreshToken;
+                    _expiresIn = response.ExpiresIn;
+                    _expiresAt = DateTime.UtcNow.AddSeconds(_expiresIn).ToLocalTime();
                 }
                 else
                 {
                     //Console.WriteLine("Getting Refresh Token from " + mAccessTokenUri);
-                    var response = await RefreshTokenAsync(mRefreshToken);
-                    mAccessToken = response.AccessToken;                    
-                    mExpiresIn = response.ExpiresIn;
-                    mExpiresAt = DateTime.UtcNow.AddSeconds(mExpiresIn).ToLocalTime();
+                    var response = await RefreshTokenAsync(_refreshToken);
+                    _accessToken = response.AccessToken;                    
+                    _expiresIn = response.ExpiresIn;
+                    _expiresAt = DateTime.UtcNow.AddSeconds(_expiresIn).ToLocalTime();
                 }
             }
-            return mAccessToken;            
+            return _accessToken;            
         }         
         
         private async Task<TokenResponse> RequestAccessTokenAsync()
         {                                    
-            return await mTokenClient.RequestResourceOwnerPasswordAsync(mUsername, mPassword, mScope);
+            return await _tokenClient.RequestResourceOwnerPasswordAsync(_username, _password, _scope);
         }
 
         private async Task<RefreshToken> RefreshTokenAsync(string refreshToken)
         {            
             // TODO: use mTokenClient.RequestRefreshTokenAsync()
-            var authorizationHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(mClientId + ":" + mClientSecret));            
-            mHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationHeader);
+            var authorizationHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(_clientId + ":" + _clientSecret));            
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationHeader);
 
             var form = new Dictionary<string, string>
             {
@@ -106,8 +106,8 @@ namespace Fint.Sse
                 {"refresh_token", refreshToken}
             };            
 
-            var url = mAccessTokenUri + "?client_id=" + mClientId + "&client_secret=" + mClientSecret + "&scope=" + mScope;            
-            var response = await mHttpClient.PostAsync(url, new FormUrlEncodedContent(form));
+            var url = _accessTokenUri + "?client_id=" + _clientId + "&client_secret=" + _clientSecret + "&scope=" + _scope;            
+            var response = await _httpClient.PostAsync(url, new FormUrlEncodedContent(form));
             if (!response.IsSuccessStatusCode) throw new Exception("OAuth Refresh Token error: " + response.ReasonPhrase);
             var jsonSerializer = new DataContractJsonSerializer(typeof(RefreshToken));
             var responseStream = await response.Content.ReadAsStreamAsync();

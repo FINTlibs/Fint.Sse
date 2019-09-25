@@ -9,13 +9,22 @@ namespace Fint.Sse
     {
         public async Task<IServerResponse> Get(Uri url, ITokenService tokenService, Dictionary<string, string> headers = null)
         {
+            var accessToken = "";
+
+            if (tokenService.OAuthEnabled)
+            {                
+                var task = Task.Run(async () => await tokenService.GetAccessTokenAsync());
+
+                accessToken = task.Result;                
+            }
+            
             var webRequest = (HttpWebRequest)WebRequest.Create(url);
             webRequest.Method = "GET";
             webRequest.Proxy = null; 
 
             if (tokenService.OAuthEnabled)
             {
-                webRequest.Headers[HttpRequestHeader.Authorization] = "Bearer " + await tokenService.GetAccessTokenAsync();
+                webRequest.Headers[HttpRequestHeader.Authorization] = "Bearer " + accessToken;
             }
             
             if (headers != null)
