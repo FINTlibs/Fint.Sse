@@ -7,17 +7,17 @@ namespace Fint.Sse
 {
     public class TokenService : ITokenService
     {
-        private IOAuthTokenService mTokenClient;
-        public bool OAuthEnabled { get { return mTokenClient.OAuthEnabled; } }        
+        private IOAuthTokenService _tokenClient;
+        public bool OAuthEnabled { get { return _tokenClient.OAuthEnabled; } }        
 
         public TokenService(IOAuthTokenService tokenClient)
         {
-            mTokenClient = tokenClient;
+            _tokenClient = tokenClient;
         }        
 
         public async Task<string> GetAccessTokenAsync()
         {
-            return await mTokenClient.GetAccessTokenAsync();
+            return await _tokenClient.GetAccessTokenAsync();
         }        
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse.Tests
 {
@@ -17,8 +18,9 @@ namespace Fint.Sse.Tests
             ServiceResponseMock response = new ServiceResponseMock(url, System.Net.HttpStatusCode.NotFound);
             WebRequesterFactoryMock factory = new WebRequesterFactoryMock(response);
             ManualResetEvent stateIsClosed = new ManualResetEvent(false);
+            ILogger logger = new LoggerFactory().CreateLogger("test");
 
-            TestableEventSource es = new TestableEventSource(url, factory);
+            TestableEventSource es = new TestableEventSource(url, factory, logger);
             es.StateChanged += (o, e) =>
             {
                 states.Add(e.State);
@@ -53,8 +55,9 @@ namespace Fint.Sse.Tests
             ServiceResponseMock response = new ServiceResponseMock(url, System.Net.HttpStatusCode.OK);
             WebRequesterFactoryMock factory = new WebRequesterFactoryMock(response);
             ManualResetEvent stateIsOpen = new ManualResetEvent(false);
+            ILogger logger = new LoggerFactory().CreateLogger("test");
 
-            TestableEventSource es = new TestableEventSource(url, factory);
+            TestableEventSource es = new TestableEventSource(url, factory, logger);
             es.StateChanged += (o, e) =>
             {
                 states.Add(e.State);
@@ -90,13 +93,14 @@ namespace Fint.Sse.Tests
             ServiceResponseMock response = new ServiceResponseMock(url, System.Net.HttpStatusCode.OK);
             WebRequesterFactoryMock factory = new WebRequesterFactoryMock(response);
             ManualResetEvent stateIsOpen = new ManualResetEvent(false);
+            ILogger logger = new LoggerFactory().CreateLogger("test");
 
             var headers = new Dictionary<string, string>
             {
                 { "x-key", "headerValue" }
             };
 
-            TestableEventSource es = new TestableEventSource(url, factory, headers);
+            TestableEventSource es = new TestableEventSource(url, factory, headers, logger);
             es.StateChanged += (o, e) =>
             {
                 states.Add(e.State);

@@ -4,40 +4,37 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse
 {
     class ConnectedState : IConnectionState
     {
-        //TODO: private static readonly slf4net.ILogger _logger = slf4net.LoggerFactory.GetLogger(typeof(ConnectedState));
+        private IWebRequesterFactory _webRequesterFactory;
+        private ServerSentEvent _sse = null;
+        private string _remainingText = string.Empty;   // the text that is not ended with a lineending char is saved for next call.
+        private IServerResponse _response;
+        private Dictionary<string, string> _headers;
+        private ITokenService _tokenService;
+        private ILogger _logger;
 
-        private IWebRequesterFactory mWebRequesterFactory;
-        private ServerSentEvent mSse = null;
-        private string mRemainingText = string.Empty;   // the text that is not ended with a lineending char is saved for next call.
-        private IServerResponse mResponse;
-        private Dictionary<string, string> mHeaders;
-        private ITokenService mTokenService;
+        public EventSourceState State => EventSourceState.OPEN;
 
-        public EventSourceState State { get { return EventSourceState.OPEN; } }
-
-        public ConnectedState(IServerResponse response, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService)
+        public ConnectedState(IServerResponse response, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService, ILogger logger)
         {
-            mResponse = response;
-            mWebRequesterFactory = webRequesterFactory;
-            mHeaders = headers;
-            mTokenService = tokenService;
+            _response = response;
+            _webRequesterFactory = webRequesterFactory;
+            _headers = headers;
+            _tokenService = tokenService;
+            _logger = logger;
         }
 
         public Task<IConnectionState> Run(Action<ServerSentEvent> msgReceived, CancellationToken cancelToken)
         {
-            int i = 0;
-
             Task<IConnectionState> t = new Task<IConnectionState>(() =>
             {
-                //using (mResponse)
                 {
-                    //using (var stream = mResponse.GetResponseStream())
-                    var stream = mResponse.GetResponseStream();
+                    var stream = _response.GetResponseStream();
                     {
                         byte[] buffer = new byte[1024 * 8];
                         var taskRead = stream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
@@ -48,7 +45,7 @@ namespace Fint.Sse
                         }
                         catch (Exception ex)
                         {
-                            //TODO: _logger.Trace(ex, "ConnectedState.Run");
+                            _logger.LogWarning(ex, "ConnectedState.Run");
                         }
                         if (!cancelToken.IsCancellationRequested)
                         {
@@ -58,25 +55,23 @@ namespace Fint.Sse
 
                                 if (bytesRead > 0) // stream has not reached the end yet
                                 {
-                                    //Console.WriteLine("ReadCallback {0} bytesRead", bytesRead);
+                                    _logger.LogTrace("ReadCallback {bytesRead} bytesRead", bytesRead);
                                     string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                                    text = mRemainingText + text;
-                                    string[] lines = StringSplitter.SplitIntoLines(text, out mRemainingText);
+                                    text = _remainingText + text;
+                                    string[] lines = StringSplitter.SplitIntoLines(text, out _remainingText);
                                     foreach (string line in lines)
                                     {
                                         if (cancelToken.IsCancellationRequested) break;
 
-                                        // Dispatch message if empty lne
-                                        if (string.IsNullOrEmpty(line.Trim()) && mSse != null)
+                                        if (string.IsNullOrEmpty(line.Trim()) && _sse != null)
                                         {
-                                            //TODO: _logger.Trace("Message received");
-                                            msgReceived(mSse);
-                                            mSse = null;
+                                            _logger.LogDebug("Message received");
+                                            msgReceived(_sse);
+                                            _sse = null;
                                         }
                                         else if (line.StartsWith(":"))
                                         {
-                                            // This a comment, just log it.
-                                            //TODO: _logger.Trace("A comment was received: " + line);
+                                            _logger.LogDebug("A comment was received: {line}", line);
                                         }
                                         else
                                         {
@@ -93,32 +88,31 @@ namespace Fint.Sse
 
                                             if (String.Compare(fieldName, "event", true) == 0)
                                             {
-                                                mSse = mSse ?? new ServerSentEvent();
-                                                mSse.EventType = fieldValue;
+                                                _sse = _sse ?? new ServerSentEvent();
+                                                _sse.EventType = fieldValue;
                                             }
                                             else if (String.Compare(fieldName, "data", true) == 0)
                                             {
-                                                mSse = mSse ?? new ServerSentEvent();
-                                                mSse.Data = fieldValue + '\n';
+                                                _sse = _sse ?? new ServerSentEvent();
+                                                _sse.Data = fieldValue + '\n';
                                             }
                                             else if (String.Compare(fieldName, "id", true) == 0)
                                             {
-                                                mSse = mSse ?? new ServerSentEvent();
-                                                mSse.LastEventId = fieldValue;
+                                                _sse = _sse ?? new ServerSentEvent();
+                                                _sse.LastEventId = fieldValue;
                                             }
                                             else if (String.Compare(fieldName, "retry", true) == 0)
                                             {
                                                 int parsedRetry;
                                                 if (int.TryParse(fieldValue, out parsedRetry))
                                                 {
-                                                    mSse = mSse ?? new ServerSentEvent();
-                                                    mSse.Retry = parsedRetry;
+                                                    _sse = _sse ?? new ServerSentEvent();
+                                                    _sse.Retry = parsedRetry;
                                                 }
                                             }
                                             else
                                             {
-                                                // Ignore this, just log it
-                                                //TODO: _logger.Warn("A unknown line was received: " + line);
+                                                _logger.LogInformation("An unknown line was received: {line}", line);
                                             }
                                         }
                                     }
@@ -128,12 +122,12 @@ namespace Fint.Sse
                                 }
                                 else // end of the stream reached
                                 {
-                                    //TODO: _logger.Trace("No bytes read. End of stream.");
+                                    _logger.LogDebug("No bytes read. End of stream.");
                                 }
                             }
                             catch (Exception ex)
                             {
-                                //TODO: _logger.Trace(ex, "ConnectedState.Run");
+                                _logger.LogInformation(ex, "ConnectedState.Run");
                             }
                         }
 
@@ -141,7 +135,7 @@ namespace Fint.Sse
                         //stream.Close();
                         //mResponse.Close();
                         //mResponse.Dispose();
-                        return new DisconnectedState(mResponse.ResponseUri, mWebRequesterFactory, mHeaders, mTokenService);
+                        return new DisconnectedState(_response.ResponseUri, _webRequesterFactory, _headers, _tokenService, _logger);
                     }
                 }
             });

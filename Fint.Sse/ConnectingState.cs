@@ -3,34 +3,35 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Fint.Sse
 {
     class ConnectingState : IConnectionState
     {
-        //TODO: private static readonly slf4net.ILogger _logger = slf4net.LoggerFactory.GetLogger(typeof(ConnectingState));
-
-        private Uri mUrl;
-        private IWebRequesterFactory mWebRequesterFactory;
-        private Dictionary<string, string> mHeaders;
-        private ITokenService mTokenService;
+        private Uri _url;
+        private IWebRequesterFactory _webRequesterFactory;
+        private Dictionary<string, string> _headers;
+        private ITokenService _tokenService;
+        private ILogger _logger;
 
         public EventSourceState State { get { return EventSourceState.CONNECTING; } }
         
-        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService)
+        public ConnectingState(Uri url, IWebRequesterFactory webRequesterFactory, Dictionary<string, string> headers, ITokenService tokenService, ILogger logger)
         {
             if (url == null) throw new ArgumentNullException("Url cant be null");
             if (webRequesterFactory == null) throw new ArgumentNullException("Factory cant be null");
-            mUrl = url;
-            mWebRequesterFactory = webRequesterFactory;
-            mHeaders = headers;
-            mTokenService = tokenService;
+            _url = url;
+            _webRequesterFactory = webRequesterFactory;
+            _headers = headers;
+            _tokenService = tokenService;
+            _logger = logger;
         }
 
         public Task<IConnectionState> Run(Action<ServerSentEvent> donothing, CancellationToken cancelToken)
         {
-            IWebRequester requester = mWebRequesterFactory.Create();
-            var taskResp = requester.Get(mUrl, mTokenService, mHeaders);
+            IWebRequester requester = _webRequesterFactory.Create();
+            var taskResp = requester.Get(_url, _tokenService, _headers);
 
             return taskResp.ContinueWith<IConnectionState>(tsk => 
             {
@@ -39,15 +40,19 @@ namespace Fint.Sse
                     IServerResponse response = tsk.Result;
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        return new ConnectedState(response, mWebRequesterFactory, mHeaders, mTokenService);
+                        return new ConnectedState(response, _webRequesterFactory, _headers, _tokenService, _logger);
                     }
                     else
                     {
-                        //TODO: _logger.Info("Failed to connect to: " + mUrl.ToString() + response ?? (" Http statuscode: " + response.StatusCode));
+                        _logger.LogInformation("Failed to connect to: " + _url.ToString() + response ?? (" Http statuscode: " + response.StatusCode));
                     }
                 }
+                else
+                {
+                    _logger.LogDebug(tsk.Exception, "Task Status {@Status}", tsk.Status);
+                }
 
-                return new DisconnectedState(mUrl, mWebRequesterFactory, mHeaders, mTokenService);
+                return new DisconnectedState(_url, _webRequesterFactory, _headers, _tokenService, _logger);
             });
         }
     }

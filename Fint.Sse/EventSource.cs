@@ -20,28 +20,22 @@ namespace Fint.Sse
         public Uri Url { get; private set; }
         public EventSourceState State { get { return CurrentState.State; } }
         public string LastEventId { get; private set; }
-        private IConnectionState mCurrentState = null;
-        private CancellationToken mStopToken;
+        private IConnectionState _currentState = null;
+        private CancellationToken _stopToken;
         private CancellationTokenSource mTokenSource = new CancellationTokenSource();
         private Dictionary<string, string> _headers;
-        private Uri url;
-        private IWebRequesterFactory factory;
-        private Dictionary<string, string> headers;        
+        public ILogger _logger;
 
         private IConnectionState CurrentState
         {
-            get { return mCurrentState; }
+            get { return _currentState; }
             set
             {
-                if (!value.Equals(mCurrentState))
+                if (!value.Equals(_currentState))
                 {
-                    StringBuilder sb = new StringBuilder("State changed from ");
-                    sb.Append(mCurrentState == null ? "Unknown" : mCurrentState.State.ToString());
-                    sb.Append(" to ");
-                    sb.Append(value == null ? "Unknown" : value.State.ToString());
-                    //TODO: _logger.Trace(sb.ToString());
-                    mCurrentState = value;
-                    OnStateChanged(mCurrentState.State);
+                    _logger.LogDebug("State changed from {mCurrentState} to {value}", _currentState, value);
+                    _currentState = value;
+                    OnStateChanged(_currentState.State);
                 }
             }
         }
@@ -51,9 +45,10 @@ namespace Fint.Sse
             Initialize(url, timeout, null);
         }
 
-        public EventSource(Uri url, Dictionary<string, string> headers, int timeout, ITokenService tokenService)
+        public EventSource(Uri url, Dictionary<string, string> headers, int timeout, ITokenService tokenService, ILogger logger)
         {
-            _headers = headers;            
+            _headers = headers;
+            _logger = logger;
             Initialize(url, timeout, tokenService);
         }
 
@@ -61,16 +56,18 @@ namespace Fint.Sse
         /// Constructor for testing purposes
         /// </summary>
         /// <param name="factory">The factory that generates the WebRequester to use.</param>
-        protected EventSource(Uri url, IWebRequesterFactory factory)
+        protected EventSource(Uri url, IWebRequesterFactory factory, ILogger logger)
         {
             _webRequesterFactory = factory;
+            _logger = logger;
             Initialize(url, 0, null);
         }
 
-        protected EventSource(Uri url, IWebRequesterFactory factory, Dictionary<string, string> headers)
+        protected EventSource(Uri url, IWebRequesterFactory factory, Dictionary<string, string> headers, ILogger logger)
         {
             _webRequesterFactory = factory;
             _headers = headers;
+            _logger = logger;
             Initialize(url, 0, null);
         }
 
@@ -78,8 +75,8 @@ namespace Fint.Sse
         {
             _timeout = timeout;
             Url = url;
-            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers, tokenService);
-            //TODO: _logger.LogInformation("EventSource created for " + url.ToString());
+            CurrentState = new DisconnectedState(Url, _webRequesterFactory, _headers, tokenService, _logger);
+            _logger.LogInformation("EventSource created for {url} \\o/", url);
         }
 
 
@@ -91,7 +88,7 @@ namespace Fint.Sse
         {
             if (State == EventSourceState.CLOSED)
             {
-                mStopToken = stopToken;
+                _stopToken = stopToken;
                 mTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stopToken);
                 Run();
             }
@@ -102,27 +99,31 @@ namespace Fint.Sse
             if (mTokenSource.IsCancellationRequested && CurrentState.State == EventSourceState.CLOSED)
                 return;
 
-            mCurrentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
+            _currentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
             {
-                CurrentState = cs.Result;
-                Run();
+                try
+                {
+                    CurrentState = cs.Result;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Exception in EventSource loop {@CurrentState}", CurrentState);
+                }
+                finally
+                {
+                    Run();
+                }
             });
         }
 
         protected void OnEventReceived(ServerSentEvent sse)
         {
-            if (EventReceived != null)
-            {
-                EventReceived(this, new ServerSentEventReceivedEventArgs(sse));
-            }
+            EventReceived?.Invoke(this, new ServerSentEventReceivedEventArgs(sse));
         }
 
         protected void OnStateChanged(EventSourceState newState)
         {
-            if (StateChanged != null)
-            {
-                StateChanged(this, new StateChangedEventArgs(newState));
-            }
+            StateChanged?.Invoke(this, new StateChangedEventArgs(newState));
         }
     }
 }

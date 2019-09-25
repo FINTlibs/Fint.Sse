@@ -10,7 +10,7 @@ namespace Fint.Sse
     {
         private readonly IFintEventListener _fintEventListener;
         private readonly FintSseSettings _fintSettings;
-        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public FintSseApplication(
             IFintEventListener fintEventListener,
@@ -30,9 +30,9 @@ namespace Fint.Sse
                 {
                     var fintOptionsSseThreadInterval = ThreadDelay;
 
-                    await Task.Delay(fintOptionsSseThreadInterval, _cts.Token)
-                        .ContinueWith(_ => _fintEventListener.Listen(orgId), _cts.Token);
-                }, _cts.Token);
+                    await Task.Delay(fintOptionsSseThreadInterval, _cancellationTokenSource.Token)
+                        .ContinueWith(_ => _fintEventListener.Listen(orgId), _cancellationTokenSource.Token);
+                }, _cancellationTokenSource.Token);
             }
         }
 
