@@ -22,8 +22,7 @@ namespace Fint.Sse
         private void OnTimerExpired(object State)
         {
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
-            if (TimerExpired != null)
-                TimerExpired(this, new EventArgs());
+            TimerExpired?.Invoke(this, new EventArgs());
         }
 
         public Watchdog(long timeout)

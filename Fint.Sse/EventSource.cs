@@ -20,25 +20,22 @@ namespace Fint.Sse
         public Uri Url { get; private set; }
         public EventSourceState State { get { return CurrentState.State; } }
         public string LastEventId { get; private set; }
-        private IConnectionState mCurrentState = null;
-        private CancellationToken mStopToken;
+        private IConnectionState _currentState = null;
+        private CancellationToken _stopToken;
         private CancellationTokenSource mTokenSource = new CancellationTokenSource();
         private Dictionary<string, string> _headers;
-        private Uri url;
-        private IWebRequesterFactory factory;
-        private Dictionary<string, string> headers;
         public ILogger _logger;
 
         private IConnectionState CurrentState
         {
-            get { return mCurrentState; }
+            get { return _currentState; }
             set
             {
-                if (!value.Equals(mCurrentState))
+                if (!value.Equals(_currentState))
                 {
-                    _logger.LogDebug("State changed from {mCurrentState} to {value}", mCurrentState, value);
-                    mCurrentState = value;
-                    OnStateChanged(mCurrentState.State);
+                    _logger.LogDebug("State changed from {mCurrentState} to {value}", _currentState, value);
+                    _currentState = value;
+                    OnStateChanged(_currentState.State);
                 }
             }
         }
@@ -91,7 +88,7 @@ namespace Fint.Sse
         {
             if (State == EventSourceState.CLOSED)
             {
-                mStopToken = stopToken;
+                _stopToken = stopToken;
                 mTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stopToken);
                 Run();
             }
@@ -102,7 +99,7 @@ namespace Fint.Sse
             if (mTokenSource.IsCancellationRequested && CurrentState.State == EventSourceState.CLOSED)
                 return;
 
-            mCurrentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
+            _currentState.Run(this.OnEventReceived, mTokenSource.Token).ContinueWith(cs =>
             {
                 CurrentState = cs.Result;
                 Run();

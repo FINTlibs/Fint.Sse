@@ -13,32 +13,30 @@ namespace Fint.Sse
 
             if (tokenService.OAuthEnabled)
             {                
-                var task = Task.Run(async () => {
-                    return await tokenService.GetAccessTokenAsync();
-                });
+                var task = Task.Run(async () => await tokenService.GetAccessTokenAsync());
 
                 accessToken = task.Result;                
             }
                      
-            var wreq = (HttpWebRequest)WebRequest.Create(url);
-            wreq.Method = "GET";
-            wreq.Proxy = null; 
+            var webRequest = (HttpWebRequest)WebRequest.Create(url);
+            webRequest.Method = "GET";
+            webRequest.Proxy = null; 
 
             if (tokenService.OAuthEnabled)
             {
-                wreq.Headers[HttpRequestHeader.Authorization] = "Bearer " + accessToken;
+                webRequest.Headers[HttpRequestHeader.Authorization] = "Bearer " + accessToken;
             }
             
             if (headers != null)
             {
                 foreach (var header in headers)
                 {
-                    wreq.Headers.Add(header.Key, header.Value);
+                    webRequest.Headers.Add(header.Key, header.Value);
                 }
             }
 
-            var taskResp = Task.Factory.FromAsync<WebResponse>(wreq.BeginGetResponse,
-                                                            wreq.EndGetResponse,
+            var taskResp = Task.Factory.FromAsync<WebResponse>(webRequest.BeginGetResponse,
+                                                            webRequest.EndGetResponse,
                                                             null).ContinueWith<IServerResponse>(t => new ServerResponse(t.Result));
             return taskResp;
 

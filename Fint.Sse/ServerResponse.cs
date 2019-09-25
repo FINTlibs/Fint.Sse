@@ -5,32 +5,20 @@ namespace Fint.Sse
 {
     class ServerResponse : IServerResponse
     {
-        private System.Net.HttpWebResponse mHttpResponse;
+        private System.Net.HttpWebResponse _httpResponse;
 
         public ServerResponse(System.Net.WebResponse webResponse)
         {
-            this.mHttpResponse = webResponse as HttpWebResponse;
+            this._httpResponse = webResponse as HttpWebResponse;
         }
 
-        public HttpStatusCode StatusCode
-        {
-            get
-            {
-                return mHttpResponse.StatusCode;
-            }
-        }
+        public HttpStatusCode StatusCode => _httpResponse.StatusCode;
 
         public System.IO.Stream GetResponseStream()
         {
-            return mHttpResponse.GetResponseStream();
+            return _httpResponse.GetResponseStream();
         }
 
-        public Uri ResponseUri
-        {
-            get
-            {
-                return mHttpResponse.ResponseUri;
-            }
-        }
+        public Uri ResponseUri => _httpResponse.ResponseUri;
     }
 }
