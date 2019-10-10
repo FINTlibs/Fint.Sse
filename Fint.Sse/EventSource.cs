@@ -33,7 +33,7 @@ namespace Fint.Sse
             {
                 if (!value.Equals(_currentState))
                 {
-                    _logger.LogDebug("State changed from {mCurrentState} to {value}", _currentState, value);
+                    _logger.LogTrace("State changed from {mCurrentState} to {value}", _currentState, value);
                     _currentState = value;
                     OnStateChanged(_currentState.State);
                 }
