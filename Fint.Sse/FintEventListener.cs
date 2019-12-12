@@ -15,24 +15,24 @@ namespace Fint.Sse
         private readonly int MAX_UUIDS = 50;
         private readonly ConcurrentBag<string> _organisationIdList = new ConcurrentBag<string>();
         private readonly ConcurrentBag<string> _uuids = new ConcurrentBag<string>();
-        private EventSource _eventSource;
-        private readonly FintSseSettings _appSettings;        
+        private readonly ConcurrentBag<EventSource> _eventSources = new ConcurrentBag<EventSource>();
+        private readonly FintSseSettings _appSettings;
         private readonly IEventHandler _eventHandler;
         private readonly ILogger<FintEventListener> _logger;
         private ITokenService _tokenService;
         private readonly object _lockObject = new object();
 
         public FintEventListener(
-            IOptions<FintSseSettings> fintSettings,            
+            IOptions<FintSseSettings> fintSettings,
             IEventHandler eventHandler,
             ILogger<FintEventListener> logger, ITokenService tokenService)
         {
-            _appSettings = fintSettings.Value;            
+            _appSettings = fintSettings.Value;
             _eventHandler = eventHandler;
             _logger = logger;
-            _tokenService = tokenService;            
+            _tokenService = tokenService;
         }
- 
+
         public void Listen(string orgId)
         {
             var headers = new Dictionary<string, string>
@@ -40,43 +40,52 @@ namespace Fint.Sse
                 {FintHeaders.ORG_ID_HEADER, orgId}
             };
 
-            var uuid = Guid.NewGuid().ToString();
-            _logger.LogInformation("SSE client id: {uuid}", uuid);
-            var url = new Uri(string.Format("{0}/{1}", _appSettings.SseEndpoint, uuid));
-
-            if (!ContainsOrganisationId(orgId))
+            foreach (var endpoint in _appSettings.SseEndpoints)
             {
-                _organisationIdList.Add(orgId);
-            }                       
 
-            _eventSource = new EventSource(url, headers, 10000, _tokenService, _logger);
+                var uuid = Guid.NewGuid().ToString();
+                _logger.LogInformation("SSE client id: {uuid}", uuid);
+                var url = new Uri(string.Format("{0}/{1}", endpoint.SseUri, uuid));
 
-            _eventSource.StateChanged += (o, e) =>
-            {                
-                _logger.LogDebug("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
-            };
-
-            _eventSource.EventReceived += (o, e) =>
-            {
-                if (e?.Message?.Data != null)
+                if (!ContainsOrganisationId(orgId))
                 {
-                    OnEventReceived(e.Message);
+                    _organisationIdList.Add(orgId);
                 }
-            };
 
-            var cancellationTokenSource = new CancellationTokenSource();
-            _eventSource.Start(cancellationTokenSource.Token);
-            _eventSource.CancellationToken = cancellationTokenSource;
+                var eventSource = new EventSource(url, headers, 10000, _tokenService, _logger);
+
+                eventSource.StateChanged += (o, e) =>
+                {
+                    _logger.LogDebug("{orgId}: SSE state change {@state} for uuid {uuid}", orgId, e.State, uuid);
+                };
+
+                eventSource.EventReceived += (o, e) =>
+                {
+                    if (e?.Message?.Data != null)
+                    {
+                        OnEventReceived(endpoint, e.Message);
+                    }
+                };
+
+                var cancellationTokenSource = new CancellationTokenSource();
+                eventSource.Start(cancellationTokenSource.Token);
+                eventSource.CancellationToken = cancellationTokenSource;
+
+                _eventSources.Add(eventSource);
+            }
         }
 
         public void Disconnect()
         {
-            _logger.LogInformation("Stop listening to {eventSource}", _eventSource.Url);
-            _eventSource.CancellationToken.Cancel();
-            _logger.LogInformation("Stop listening");
+            foreach (var eventSource in _eventSources)
+            {
+                _logger.LogInformation("Stop listening to {eventSource}", eventSource.Url);
+                eventSource.CancellationToken.Cancel();
+                _logger.LogInformation("Stop listening");
+            }
         }
 
-        public void OnEventReceived(ServerSentEvent sse)
+        public void OnEventReceived(SseEndpoint endpoint, ServerSentEvent sse)
         {
             var serverSentEvent = EventUtil.ToEvent<object>(sse.Data);
 
@@ -100,7 +109,7 @@ namespace Fint.Sse
 
             _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Action);
             // var accessToken = _tokenClient.AccessToken;
-            _eventHandler.HandleEvent(serverSentEvent);
+            _eventHandler.HandleEvent(endpoint, serverSentEvent);
         }
 
         private bool IsNewCorrId(string corrId)
@@ -129,6 +138,6 @@ namespace Fint.Sse
             {
                 return _organisationIdList != null && _organisationIdList.Contains(orgId);
             }
-        }        
+        }
     }
 }

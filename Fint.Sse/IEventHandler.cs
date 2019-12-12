@@ -4,6 +4,6 @@ namespace Fint.Sse
 {
     public interface IEventHandler
     {
-        void HandleEvent(Event<object> serverSideEvent);
+        void HandleEvent(SseEndpoint endpoint, Event<object> serverSideEvent);
     }
 }
