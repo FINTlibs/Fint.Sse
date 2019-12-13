@@ -40,11 +40,11 @@ namespace Fint.Sse
                 {FintHeaders.ORG_ID_HEADER, orgId}
             };
 
+            var uuid = Guid.NewGuid().ToString();
+            _logger.LogInformation("SSE client id: {uuid}", uuid);
+
             foreach (var endpoint in _appSettings.SseEndpoints)
             {
-
-                var uuid = Guid.NewGuid().ToString();
-                _logger.LogInformation("SSE client id: {uuid}", uuid);
                 var url = new Uri(string.Format("{0}/{1}", endpoint.SseUri, uuid));
 
                 if (!ContainsOrganisationId(orgId))
@@ -107,7 +107,7 @@ namespace Fint.Sse
                 return;
             }
 
-            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Action);
+            _logger.LogInformation("{orgId}: Event received from {@Source}: {@Event}", serverSentEvent.OrgId, serverSentEvent.Source, serverSentEvent.Action);
             // var accessToken = _tokenClient.AccessToken;
             _eventHandler.HandleEvent(endpoint, serverSentEvent);
         }
