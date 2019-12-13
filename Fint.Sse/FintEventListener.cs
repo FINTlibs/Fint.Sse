@@ -98,7 +98,7 @@ namespace Fint.Sse
                 return;
             }
 
-            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Action);
+            _logger.LogInformation("{orgId}: Event received from {@Source}: {@Event}", serverSentEvent.OrgId, serverSentEvent.Source, serverSentEvent.Action);
             // var accessToken = _tokenClient.AccessToken;
             _eventHandler.HandleEvent(serverSentEvent);
         }
