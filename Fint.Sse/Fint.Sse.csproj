@@ -8,13 +8,13 @@
     <Company>FINT</Company>
     <Product>FINT.Sse</Product>
     <Description>Eventsource implementation for .Net. By using FINT.Sse can you receive Server-Sent Event(SSE) in your native .Net program.</Description>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>$(Version).$(BuildNumber)</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FINT.Event.Model" Version="2.0.0" />
+    <PackageReference Include="FINT.Event.Model" Version="3.0.0" />
     <PackageReference Include="IdentityModel" Version="2.10.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.0.0" />

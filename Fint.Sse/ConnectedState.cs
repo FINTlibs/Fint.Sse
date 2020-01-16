@@ -45,7 +45,7 @@ namespace Fint.Sse
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "ConnectedState.Run");
+                            _logger.LogTrace(ex, "ConnectedState.Run.ReadAsync");
                         }
                         if (!cancelToken.IsCancellationRequested)
                         {
@@ -127,7 +127,7 @@ namespace Fint.Sse
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogInformation(ex, "ConnectedState.Run");
+                                _logger.LogTrace(ex, "ConnectedState.Run");
                             }
                         }
 
