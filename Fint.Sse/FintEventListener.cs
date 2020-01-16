@@ -35,10 +35,10 @@ namespace Fint.Sse
 
         public void Listen(string orgId)
         {
-            var headers = new Dictionary<string, string>
+            if (!ContainsOrganisationId(orgId))
             {
-                {FintHeaders.ORG_ID_HEADER, orgId}
-            };
+                _organisationIdList.Add(orgId);
+            }
 
             var uuid = Guid.NewGuid().ToString();
             _logger.LogInformation("SSE client id: {uuid}", uuid);
@@ -46,11 +46,10 @@ namespace Fint.Sse
             foreach (var endpoint in _appSettings.SseEndpoints)
             {
                 var url = new Uri(string.Format("{0}/{1}", endpoint.SseUri, uuid));
-
-                if (!ContainsOrganisationId(orgId))
+                var headers = new Dictionary<string, string>
                 {
-                    _organisationIdList.Add(orgId);
-                }
+                    {FintHeaders.ORG_ID_HEADER, orgId}
+                };
 
                 var eventSource = new EventSource(url, headers, 10000, _tokenService, _logger);
 
@@ -81,7 +80,6 @@ namespace Fint.Sse
             {
                 _logger.LogInformation("Stop listening to {eventSource}", eventSource.Url);
                 eventSource.CancellationToken.Cancel();
-                _logger.LogInformation("Stop listening");
             }
         }
 
@@ -97,13 +95,16 @@ namespace Fint.Sse
 
             if (!IsNewCorrId(serverSentEvent.CorrId))
             {
-                _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
+                _logger.LogTrace("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
                 return;
             }
 
             if (!ContainsOrganisationId(serverSentEvent.OrgId))
             {
-                _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId);
+                _logger.LogInformation("Received event {corrId} from {source} for {org}", 
+                    serverSentEvent.CorrId,
+                    serverSentEvent.Source,
+                    serverSentEvent.OrgId);
                 return;
             }
 
