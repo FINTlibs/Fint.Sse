@@ -24,7 +24,7 @@ pipeline {
         BINTRAY = credentials('fint-bintray')
       }
       when {
-          tag pattern: "v\\d+\\.\\d+\\.\\d+(-\\w+-\\d+)?", comparator: "REGEXP"
+          tag pattern: "v\\d+\\.\\d+\\.\\d+(-\\w+\\.\\d+)?", comparator: "REGEXP"
       }
       steps {
           script {
