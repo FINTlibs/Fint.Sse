@@ -33,111 +33,103 @@ namespace Fint.Sse
         {
             Task<IConnectionState> t = new Task<IConnectionState>(() =>
             {
+                try
                 {
                     var stream = _response.GetResponseStream();
+                    byte[] buffer = new byte[1024 * 32];
+                    var taskRead = stream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
+
+                    taskRead.Wait(cancelToken);
+
+                    if (!cancelToken.IsCancellationRequested)
                     {
-                        byte[] buffer = new byte[1024 * 8];
-                        var taskRead = stream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
+                        var bytesRead = taskRead.Result;
 
-                        try
+                        if (bytesRead > 0) // stream has not reached the end yet
                         {
-                            taskRead.Wait(cancelToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "ConnectedState.Run");
-                        }
-                        if (!cancelToken.IsCancellationRequested)
-                        {
-                            try
+                            _logger.LogTrace("ReadCallback {bytesRead} bytesRead", bytesRead);
+                            string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                            text = _remainingText + text;
+                            string[] lines = StringSplitter.SplitIntoLines(text, out _remainingText);
+                            foreach (string line in lines)
                             {
-                                var bytesRead = taskRead.Result;
+                                if (cancelToken.IsCancellationRequested) break;
 
-                                if (bytesRead > 0) // stream has not reached the end yet
+                                if (string.IsNullOrEmpty(line.Trim()) && _sse != null)
                                 {
-                                    _logger.LogTrace("ReadCallback {bytesRead} bytesRead", bytesRead);
-                                    string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                                    text = _remainingText + text;
-                                    string[] lines = StringSplitter.SplitIntoLines(text, out _remainingText);
-                                    foreach (string line in lines)
+                                    _logger.LogDebug("Message received");
+                                    msgReceived(_sse);
+                                    _sse = null;
+                                }
+                                else if (line.StartsWith(":"))
+                                {
+                                    _logger.LogDebug("A comment was received: {line}", line);
+                                }
+                                else
+                                {
+                                    string fieldName = String.Empty;
+                                    string fieldValue = String.Empty;
+                                    if (line.Contains(':'))
                                     {
-                                        if (cancelToken.IsCancellationRequested) break;
+                                        int index = line.IndexOf(':');
+                                        fieldName = line.Substring(0, index);
+                                        fieldValue = line.Substring(index + 1).TrimStart();
+                                    }
+                                    else
+                                        fieldName = line;
 
-                                        if (string.IsNullOrEmpty(line.Trim()) && _sse != null)
+                                    if (String.Compare(fieldName, "event", true) == 0)
+                                    {
+                                        _sse = _sse ?? new ServerSentEvent();
+                                        _sse.EventType = fieldValue;
+                                    }
+                                    else if (String.Compare(fieldName, "data", true) == 0)
+                                    {
+                                        _sse = _sse ?? new ServerSentEvent();
+                                        _sse.Data = fieldValue + '\n';
+                                    }
+                                    else if (String.Compare(fieldName, "id", true) == 0)
+                                    {
+                                        _sse = _sse ?? new ServerSentEvent();
+                                        _sse.LastEventId = fieldValue;
+                                    }
+                                    else if (String.Compare(fieldName, "retry", true) == 0)
+                                    {
+                                        int parsedRetry;
+                                        if (int.TryParse(fieldValue, out parsedRetry))
                                         {
-                                            _logger.LogDebug("Message received");
-                                            msgReceived(_sse);
-                                            _sse = null;
-                                        }
-                                        else if (line.StartsWith(":"))
-                                        {
-                                            _logger.LogDebug("A comment was received: {line}", line);
-                                        }
-                                        else
-                                        {
-                                            string fieldName = String.Empty;
-                                            string fieldValue = String.Empty;
-                                            if (line.Contains(':'))
-                                            {
-                                                int index = line.IndexOf(':');
-                                                fieldName = line.Substring(0, index);
-                                                fieldValue = line.Substring(index + 1).TrimStart();
-                                            }
-                                            else
-                                                fieldName = line;
-
-                                            if (String.Compare(fieldName, "event", true) == 0)
-                                            {
-                                                _sse = _sse ?? new ServerSentEvent();
-                                                _sse.EventType = fieldValue;
-                                            }
-                                            else if (String.Compare(fieldName, "data", true) == 0)
-                                            {
-                                                _sse = _sse ?? new ServerSentEvent();
-                                                _sse.Data = fieldValue + '\n';
-                                            }
-                                            else if (String.Compare(fieldName, "id", true) == 0)
-                                            {
-                                                _sse = _sse ?? new ServerSentEvent();
-                                                _sse.LastEventId = fieldValue;
-                                            }
-                                            else if (String.Compare(fieldName, "retry", true) == 0)
-                                            {
-                                                int parsedRetry;
-                                                if (int.TryParse(fieldValue, out parsedRetry))
-                                                {
-                                                    _sse = _sse ?? new ServerSentEvent();
-                                                    _sse.Retry = parsedRetry;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                _logger.LogInformation("An unknown line was received: {line}", line);
-                                            }
+                                            _sse = _sse ?? new ServerSentEvent();
+                                            _sse.Retry = parsedRetry;
                                         }
                                     }
+                                    else
+                                    {
+                                        _logger.LogInformation("An unknown line was received: {line}", line);
+                                    }
+                                }
+                            }
 
-                                    if (!cancelToken.IsCancellationRequested)
-                                        return this;
-                                }
-                                else // end of the stream reached
-                                {
-                                    _logger.LogDebug("No bytes read. End of stream.");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogInformation(ex, "ConnectedState.Run");
-                            }
+                            if (!cancelToken.IsCancellationRequested)
+                                return this;
                         }
-
-                        //stream.Dispose()
-                        //stream.Close();
-                        //mResponse.Close();
-                        //mResponse.Dispose();
-                        return new DisconnectedState(_response.ResponseUri, _webRequesterFactory, _headers, _tokenService, _logger);
+                        else // end of the stream reached
+                        {
+                            _logger.LogDebug("No bytes read. End of stream.");
+                        }
                     }
                 }
+
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("Error: {message} {inner}", ex.Message, ex.InnerException?.InnerException?.Message);
+                    //_logger.LogTrace(ex, "ConnectedState.Run");
+                }
+                //stream.Dispose()
+                //stream.Close();
+                //mResponse.Close();
+                //mResponse.Dispose();
+                return new DisconnectedState(_response.ResponseUri, _webRequesterFactory, _headers, _tokenService, _logger);
+
             });
 
             t.Start();

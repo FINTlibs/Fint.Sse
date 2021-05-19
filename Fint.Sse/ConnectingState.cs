@@ -49,7 +49,7 @@ namespace Fint.Sse
                 }
                 else
                 {
-                    _logger.LogDebug(tsk.Exception, "Task Status {@Status}", tsk.Status);
+                    _logger.LogDebug("Task Status {@Status} {error}", tsk.Status, tsk.Exception?.Message);
                 }
 
                 return new DisconnectedState(_url, _webRequesterFactory, _headers, _tokenService, _logger);

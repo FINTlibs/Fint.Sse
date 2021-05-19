@@ -88,7 +88,7 @@ namespace Fint.Sse
 
             if (!IsNewCorrId(serverSentEvent.CorrId))
             {
-                _logger.LogInformation("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
+                _logger.LogTrace("This EventListener has already started processing {corrId} for {ordgID}", serverSentEvent.CorrId, serverSentEvent.OrgId);
                 return;
             }
 
