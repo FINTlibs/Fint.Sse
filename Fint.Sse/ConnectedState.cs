@@ -121,7 +121,7 @@ namespace Fint.Sse
 
                 catch (Exception ex)
                 {
-                    _logger.LogDebug("Error: {message} {inner}", ex.Message, ex.InnerException?.InnerException?.Message);
+                    _logger.LogDebug("Error: {message} {inner}", ex.Message, ExceptionDetails.InnermostMessage(ex));
                     //_logger.LogTrace(ex, "ConnectedState.Run");
                 }
                 //stream.Dispose()

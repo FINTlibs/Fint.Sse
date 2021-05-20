@@ -35,10 +35,10 @@ namespace Fint.Sse
  
         public void Listen(string orgId)
         {
-            var headers = new Dictionary<string, string>
+            if (!ContainsOrganisationId(orgId))
             {
-                {FintHeaders.ORG_ID_HEADER, orgId}
-            };
+                _organisationIdList.Add(orgId);
+            }
 
             var uuid = Guid.NewGuid().ToString();
             _logger.LogInformation("SSE client id: {uuid}", uuid);
@@ -48,6 +48,10 @@ namespace Fint.Sse
             {
                 _organisationIdList.Add(orgId);
             }                       
+            var headers = new Dictionary<string, string>
+            {
+                {FintHeaders.ORG_ID_HEADER, orgId}
+            };
 
             _eventSource = new EventSource(url, headers, 10000, _tokenService, _logger);
 
@@ -73,7 +77,6 @@ namespace Fint.Sse
         {
             _logger.LogInformation("Stop listening to {eventSource}", _eventSource.Url);
             _eventSource.CancellationToken.Cancel();
-            _logger.LogInformation("Stop listening");
         }
 
         public void OnEventReceived(ServerSentEvent sse)
@@ -94,11 +97,14 @@ namespace Fint.Sse
 
             if (!ContainsOrganisationId(serverSentEvent.OrgId))
             {
-                _logger.LogInformation("This is not EventListener for {org}", serverSentEvent.OrgId);
+                _logger.LogInformation("Received event {corrId} from {source} for {org}", 
+                    serverSentEvent.CorrId,
+                    serverSentEvent.Source,
+                    serverSentEvent.OrgId);
                 return;
             }
 
-            _logger.LogInformation("{orgId}: Event received {@Event}", serverSentEvent.OrgId, serverSentEvent.Action);
+            _logger.LogInformation("{orgId}: Event received from {@Source}: {@Event}", serverSentEvent.OrgId, serverSentEvent.Source, serverSentEvent.Action);
             // var accessToken = _tokenClient.AccessToken;
             _eventHandler.HandleEvent(serverSentEvent);
         }
